@@ -1,3 +1,5 @@
+import { registerEnumType } from '@nestjs/graphql';
+
 export enum Message {
   SOMETHING_WENT_WRONG = 'Something went wrong!',
   NO_DATA_FOUND = 'No data is found!',
@@ -7,6 +9,7 @@ export enum Message {
   UPLOAD_FAILED = 'Upload failed!',
   BAD_REQUEST = 'Bad Request',
 
+  USED_MEMBER_NICK_OR_PHONE = 'Already used member nick or phone!',
   NO_MEMBER_NICK = 'No number with that member nick!',
   WRONG_PASSWORD = 'Wrong password, please try again!',
   BLOCKED_USER = 'You have been blocked!',
@@ -19,3 +22,11 @@ export enum Message {
   PROVIDE_ALLOWED_FORMAT = 'Please provide jpg, ipeg or png images!',
   SELF_SUBSCRIPTION_DENIED = 'Self subscription is denied!',
 }
+
+export enum Direction {
+  ASC = 1,
+  DESC = -1,
+}
+registerEnumType(Direction, {
+  name: 'Direction',
+});
