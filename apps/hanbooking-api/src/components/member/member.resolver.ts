@@ -1,7 +1,13 @@
-import { Args, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { MemberService } from './member.service';
 import { Member } from '../../libs/dto/member/member';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import {  UseGuards } from '@nestjs/common';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { AuthMember } from '../auth/decorators/authMember.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MemberType } from '../../libs/enums/member.enum';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Resolver()
 export class MemberResolver {
@@ -23,5 +29,27 @@ export class MemberResolver {
     ): Promise<Member> {
         console.log('Mutation: login');
         return await this.memberService.login(input);
+    }
+
+    /** checkAuth **/
+    @UseGuards(AuthGuard)
+    @Query(() => String)
+    public async checkAuth(
+        @AuthMember('memberNick') memberNick: string
+    ): Promise<string> {
+        console.log('Mutation: checkAuth');
+        console.log('memberNick:',memberNick);
+        return await `Hi ${memberNick}`;
+    }
+
+    /** checkAuthRoles **/
+    @Roles(MemberType.USER, MemberType.AGENT)
+    @UseGuards(RolesGuard)
+    @Query(() => String)
+    public async checkAuthRoles(
+        @AuthMember() autmember: Member
+    ): Promise<string> {
+        console.log('Mutation: checkAuthRoles');
+        return await `Hi ${autmember.memberNick}, you are ${autmember.memberType} (memberId: ${autmember._id})`;
     }
 }
