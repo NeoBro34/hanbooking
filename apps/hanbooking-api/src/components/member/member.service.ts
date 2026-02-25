@@ -1,17 +1,19 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { Member } from '../../libs/dto/member/member';
+import { Member, Members } from '../../libs/dto/member/member';
 import { AuthService } from '../auth/auth.service';
-import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
-import { Message } from '../../libs/enums/common.enum';
-import { MemberStatus } from '../../libs/enums/member.enum';
+import { AgentsInquiry, LoginInput, MemberInput } from '../../libs/dto/member/member.input';
+import { Direction, Message } from '../../libs/enums/common.enum';
+import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { MemberUpdate } from '../../libs/dto/member/member.update';
-import { T } from '../../libs/types/common';
+import { StatisticModifier, T } from '../../libs/types/common';
 import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeGroup } from '../../libs/enums/like.enum';
+import { lookupAuthMemberLiked } from '../../libs/config';
+import { LikeInput } from '../../libs/dto/like/like.input';
 
 @Injectable()
 export class MemberService {
@@ -107,5 +109,60 @@ export class MemberService {
             // meFollowed
         }
         return targetMember;
+    }
+
+     /** getAgents **/
+    public async getAgents(memberId: ObjectId, input: AgentsInquiry): Promise<Members> {
+        const { text } = input.search;
+        const match: T = {memberType: MemberType.AGENT, memberStatus: MemberStatus.ACTIVE};
+        const sort: T = { [input?.sort ?? 'createdAt'] : input?.direction ?? Direction.DESC };
+
+        if(text) match.memberNick = { $regex: new RegExp(text, 'i') };
+        console.log('match:', match);
+
+        const result = await this.memberModel.aggregate(
+            [
+                { $match: match },
+                { $sort: sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: ( input.page -1 ) * input.limit }, 
+                            { $limit: input.limit },
+                            lookupAuthMemberLiked(memberId),
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ]
+        )
+        .exec();
+        if(!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
+    }
+
+    /** likeTargetMember **/
+    public async likeTargetMember(memberId: ObjectId, likeRefId: ObjectId): Promise<Member> {
+        const target: Member = await this.memberModel
+            .findOne({ _id: likeRefId, memberStatus: MemberStatus.ACTIVE }).exec();
+            
+        if(!target) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        const input: LikeInput = { memberId: memberId, likeRefId: likeRefId, likeGroup: LikeGroup.MEMBER };
+
+        //LIKE TOGGLE via Like model
+        const modifier: number = await this.likeService.toggleLike(input);
+        const result = await this.memberStatsEditor(
+            { _id: likeRefId, targetKey: 'memberLikes', modifier: modifier }
+        );
+
+        if(!result) throw new InternalServerErrorException(Message.SOMETHING_WENT_WRONG);
+        return result;
+    }
+
+    public async memberStatsEditor(input: StatisticModifier): Promise<Member> {
+        const {_id, targetKey, modifier } = input;
+        return await this.memberModel.findByIdAndUpdate(_id, {$inc: {[targetKey]: modifier}}, {new: true}).exec();
     }
 }
