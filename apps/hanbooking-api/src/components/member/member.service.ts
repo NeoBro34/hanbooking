@@ -1,17 +1,25 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { Member } from '../../libs/dto/member/member';
 import { AuthService } from '../auth/auth.service';
 import { LoginInput, MemberInput } from '../../libs/dto/member/member.input';
 import { Message } from '../../libs/enums/common.enum';
 import { MemberStatus } from '../../libs/enums/member.enum';
+import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { T } from '../../libs/types/common';
+import { ViewService } from '../view/view.service';
+import { LikeService } from '../like/like.service';
+import { ViewGroup } from '../../libs/enums/view.enum';
+import { LikeGroup } from '../../libs/enums/like.enum';
 
 @Injectable()
 export class MemberService {
     constructor(
         @InjectModel('Member') private readonly memberModel: Model<Member>,
         private authService: AuthService,
+        private viewService: ViewService,
+        private likeService: LikeService,
     ) {}
 
     /** signup **/
@@ -51,5 +59,53 @@ export class MemberService {
         response.accessToken = await this.authService.createToken(response);
         
         return response;
+    }
+
+    /** updateMember **/
+    public async updateMember(memberId: ObjectId, input: MemberUpdate ): Promise<Member> {
+        const result: Member = await this.memberModel.findOneAndUpdate(
+            {
+                _id: memberId,
+                memberStatus: MemberStatus.ACTIVE,
+            }, 
+            input, 
+            { new: true }
+        )
+        .exec();
+
+        if(!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
+        result.accessToken = await this.authService.createToken(result);
+
+        return result;
+    }
+
+    /** getMember **/
+    public async getMember(memberId: ObjectId, targetId: ObjectId): Promise<Member> {
+        const search: T = {
+            _id: targetId,
+            memberStatus: {
+                $in: [MemberStatus.ACTIVE, MemberStatus.BLOCK],
+            },
+        };
+        const targetMember = await this.memberModel.findOne(search).lean().exec();
+        if (!targetMember) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        if (memberId) {
+            // record view 
+            const viewInput = { memberId: memberId, viewRefId: targetId, viewGroup: ViewGroup.MEMBER };
+            const newView = await this.viewService.recordView(viewInput);
+
+            // increase memberViews
+            if(newView) {
+                await this.memberModel.findOneAndUpdate(search, {$inc: { memberViews: 1 }}, { new: true }).exec();
+                targetMember.memberViews++;
+            }
+
+            // meLiked
+            const likeInput = { memberId: memberId, likeRefId: targetId, likeGroup: LikeGroup.MEMBER };
+            targetMember.meLiked = await this.likeService.checkLikeExistence(likeInput);
+            // meFollowed
+        }
+        return targetMember;
     }
 }
