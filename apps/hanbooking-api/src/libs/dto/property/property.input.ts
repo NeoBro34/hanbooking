@@ -126,6 +126,10 @@ class PISearch {
   periodsRange?: PeriodsRange;
 
   @IsOptional()
+  @Field(() => [PropertyAmenity], { nullable: true })
+  amenities?: PropertyAmenity[];
+
+  @IsOptional()
   @Field(() => String, { nullable: true })
   text?: string;
 }

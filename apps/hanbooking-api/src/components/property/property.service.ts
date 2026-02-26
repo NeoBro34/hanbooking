@@ -1,18 +1,19 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { Property } from '../../libs/dto/property/property';
+import { Properties, Property } from '../../libs/dto/property/property';
 import { MemberService } from '../member/member.service';
 import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
-import { PropertyInput } from '../../libs/dto/property/property.input';
-import { Message } from '../../libs/enums/common.enum';
+import { OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
+import { Direction, Message } from '../../libs/enums/common.enum';
 import { StatisticModifier, T } from '../../libs/types/common';
 import { PropertyStatus } from '../../libs/enums/property.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import moment from 'moment';
+import { lookupAuthMemberLiked, lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
 
 @Injectable()
 export class PropertyService {
@@ -96,8 +97,76 @@ export class PropertyService {
         return result;
     }
 
+    /** getProperties **/
+    public async getProperties(memberId: ObjectId, input: PropertiesInquiry): Promise<Properties> {
+        const match: T = { propertyStatus: PropertyStatus.ACTIVE };
+        const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
 
-    
+        this.shapeMatchQuery(match, input);
+        console.log('match:', match);
+
+        const result = await this.propertyModel.aggregate(
+            [
+                { $match: match },
+                { $sort:  sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: (input.page - 1) * input.limit },
+                            { $limit: input.limit },
+                            lookupAuthMemberLiked(memberId),
+                            lookupMember,
+                            { $unwind: '$memberData' }, // [memberData] => memberData
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ])
+            .exec();
+        if (!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
+    }
+
+    /** shapeMatchQuery for getProperties **/
+    private shapeMatchQuery(match: T, input: PropertiesInquiry): void {
+        const {
+            memberId,
+            locationList,
+            roomsList,
+            bedsList,
+            typeList,
+            periodsRange,
+            pricesRange,
+            amenities,
+            text,
+        } = input.search;
+        if( memberId) match.memberId = shapeIntoMongoObjectId(memberId);
+        if(locationList && locationList.length) match.propertyLocation = { $in: locationList };
+        if(roomsList && roomsList.length) match.propertyRooms = { $in: roomsList };
+        if(bedsList && bedsList.length) match.propertyBeds = { $in: bedsList };
+        if(typeList && typeList.length) match.propertyType = { $in: typeList };
+        if(pricesRange) match.propertyPrice = { $gte: pricesRange.start, $lte: pricesRange.end };
+        if(periodsRange) match.createdAt = { $gte: periodsRange.start, $lte: periodsRange.end };
+        if(text) match.propertyTitle = { $regex: new RegExp(text, 'i') };
+        if(amenities) {
+            match['$or'] = amenities.map((ele) => {
+                return { [ele]: true };
+            });
+        }
+    }
+
+    /** getFavorites **/
+    public async getFavorites(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
+        return await this.likeService.getFavoriteProperties(memberId, input);
+    }
+
+    /** getVisited **/
+    public async getVisited(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
+        return await this.viewService.getVisitedProperties(memberId, input);
+    }
+
+
 
 
     /** propertyStatsEditor **/

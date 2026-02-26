@@ -4,13 +4,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Property } from '../../libs/dto/property/property';
-import { PropertyInput } from '../../libs/dto/property/property.input';
+import { Properties, Property } from '../../libs/dto/property/property';
+import { OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import mongoose from 'mongoose';
 import { WithoutGuard } from '../auth/guards/without.guard';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import { shapeIntoMongoObjectId } from '../../libs/config';
+import { AuthGuard } from '../auth/guards/auth.guard';
 
 @Resolver()
 export class PropertyResolver {
@@ -55,5 +56,38 @@ export class PropertyResolver {
         input._id = shapeIntoMongoObjectId(input._id);
 
         return await this.propertyService.updateProperty(memberId, input);
+    }
+
+    /** getProperties **/
+    @UseGuards(WithoutGuard)
+    @Query(( returns ) => Properties)
+    public async getProperties(
+        @Args('input') input: PropertiesInquiry,
+        @AuthMember('_id') memberId: mongoose.ObjectId,
+    ): Promise<Properties> {
+        console.log('Query: getProperties');
+        return await this.propertyService.getProperties(memberId, input);
+    }
+
+    /** getFavorites **/
+    @UseGuards(AuthGuard)
+    @Query(( returns ) => Properties)
+    public async getFavorites(
+        @Args('input') input: OrdinaryInquiry,
+        @AuthMember('_id') memberId: mongoose.ObjectId,
+    ): Promise<Properties> {
+        console.log('Query: getFavorites');
+        return await this.propertyService.getFavorites(memberId, input);
+    }
+    
+    /** getVisited **/
+    @UseGuards(AuthGuard)
+    @Query(( returns ) => Properties)
+    public async getVisited(
+        @Args('input') input: OrdinaryInquiry,
+        @AuthMember('_id') memberId: mongoose.ObjectId,
+    ): Promise<Properties> {
+        console.log('Query: getVisited');
+        return await this.propertyService.getVisited(memberId, input);
     }
 }
