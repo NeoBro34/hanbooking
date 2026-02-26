@@ -5,7 +5,7 @@ import { MemberType } from '../../libs/enums/member.enum';
 import { UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Properties, Property } from '../../libs/dto/property/property';
-import { AgentPropertiesInquiry, OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
+import { AgentPropertiesInquiry, AllPropertiesInquiry, OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
 import { AuthMember } from '../auth/decorators/authMember.decorator';
 import mongoose from 'mongoose';
 import { WithoutGuard } from '../auth/guards/without.guard';
@@ -113,5 +113,39 @@ export class PropertyResolver {
         console.log('Mutation: likeTargetProperty');
         const likeRefId = shapeIntoMongoObjectId(input);
         return await this.propertyService.likeTargetProperty(memberId, likeRefId);
+    }
+
+    /** Admin **/
+
+    /** getAllPropertiesByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Query(( returns ) => Properties)
+    public async getAllPropertiesByAdmin(
+        @Args('input') input: AllPropertiesInquiry,
+        @AuthMember('_id') memberId: mongoose.ObjectId,
+    ): Promise<Properties> {
+        console.log('Query: getAllPropertiesByAdmin');
+        return await this.propertyService.getAllPropertiesByAdmin(input);
+    }
+
+    /** updatePropertyByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Mutation((returns) => Property)
+    public async updatePropertyByAdmin(@Args('input') input: PropertyUpdate): Promise<Property> {
+        console.log('Mutation: updatePropertyByAdmin');
+        input._id = shapeIntoMongoObjectId(input._id);
+        return await this.propertyService.updatePropertyByAdmin(input);
+    }
+
+    /** removePropertyByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Mutation((returns) => Property)
+    public async removePropertyByAdmin(@Args('propertyId') input: string): Promise<Property> {
+        console.log('Mutation: removePropertyByAdmin');
+        const propertyId = shapeIntoMongoObjectId(input);
+        return await this.propertyService.removePropertyByAdmin(propertyId);
     }
 }
