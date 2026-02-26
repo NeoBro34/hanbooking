@@ -21,6 +21,7 @@ export enum Message {
   NOT_ALLOWED_REQUEST = 'Not Allowed Request!',
   PROVIDE_ALLOWED_FORMAT = 'Please provide jpg, ipeg or png images!',
   SELF_SUBSCRIPTION_DENIED = 'Self subscription is denied!',
+  PROPERTY_AVAILABLE = 'Property is available on these dates',
 }
 
 export enum Direction {

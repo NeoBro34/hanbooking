@@ -10,10 +10,6 @@ import { Direction } from '../../enums/common.enum';
 export class CreateBookingInput {
     @IsNotEmpty()
     @Field(() => String)
-    memberId: mongoose.ObjectId;
-
-    @IsNotEmpty()
-    @Field(() => String)
     propertyId: mongoose.ObjectId;
 
     @IsNotEmpty()
@@ -28,10 +24,6 @@ export class CreateBookingInput {
     @IsNotEmpty()
     @Field(() => GraphQLISODateTime)
     checkOutDate: Date;
-
-    @IsNotEmpty()
-    @Field(() => Number)
-    totalPrice: number;
 
     @IsOptional()
     @Field(() => OrderStatus, { nullable: true })
