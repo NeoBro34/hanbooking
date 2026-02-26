@@ -5,7 +5,7 @@ import { Properties, Property } from '../../libs/dto/property/property';
 import { MemberService } from '../member/member.service';
 import { ViewService } from '../view/view.service';
 import { LikeService } from '../like/like.service';
-import { OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
+import { AgentPropertiesInquiry, OrdinaryInquiry, PropertiesInquiry, PropertyInput } from '../../libs/dto/property/property.input';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { StatisticModifier, T } from '../../libs/types/common';
 import { PropertyStatus } from '../../libs/enums/property.enum';
@@ -14,6 +14,7 @@ import { LikeGroup } from '../../libs/enums/like.enum';
 import { PropertyUpdate } from '../../libs/dto/property/property.update';
 import moment from 'moment';
 import { lookupAuthMemberLiked, lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
+import { LikeInput } from '../../libs/dto/like/like.input';
 
 @Injectable()
 export class PropertyService {
@@ -164,6 +165,58 @@ export class PropertyService {
     /** getVisited **/
     public async getVisited(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
         return await this.viewService.getVisitedProperties(memberId, input);
+    }
+
+     /** getAgentProperties **/
+    public async getAgentProperties(memberId: ObjectId, input: AgentPropertiesInquiry): Promise<Properties> {
+        const { propertyStatus } = input.search;
+        if(propertyStatus === PropertyStatus.DELETE) throw new BadRequestException(Message.NOT_ALLOWED_REQUEST);
+
+        const match: T = {
+            memberId: memberId,
+            propertyStatus: propertyStatus ?? { $ne: PropertyStatus.DELETE },
+        };
+        const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
+
+        const result = await this.propertyModel.aggregate(
+            [
+                { $match: match },
+                { $sort: sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: (input.page - 1 ) * input.limit },
+                            { $limit: input.limit },
+                            lookupMember,
+                            { $unwind: '$memberData' },
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ])
+            .exec();
+        if(!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
+    }
+
+    /** likeTargetProperty **/
+    public async likeTargetProperty(memberId: ObjectId, likeRefId: ObjectId): Promise<Property> {
+        const target: Property = await this.propertyModel
+            .findOne({ _id: likeRefId, propertyStatus: PropertyStatus.ACTIVE }).exec();
+            
+        if(!target) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        const input: LikeInput = { memberId: memberId, likeRefId: likeRefId, likeGroup: LikeGroup.PROPERTY };
+
+        //LIKE TOGGLE via Like model
+        const modifier: number = await this.likeService.toggleLike(input);
+        const result = await this.propertyStatsEditor(
+            { _id: likeRefId, targetKey: 'propertyLikes', modifier: modifier }
+        );
+
+        if(!result) throw new InternalServerErrorException(Message.SOMETHING_WENT_WRONG);
+        return result;
     }
 
 
