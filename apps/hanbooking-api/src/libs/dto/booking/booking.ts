@@ -2,6 +2,7 @@ import { Field, GraphQLISODateTime, ObjectType } from "@nestjs/graphql";
 import mongoose from "mongoose";
 import { OrderStatus } from "../../enums/booking.enum";
 import { TotalCounter } from "../member/member";
+import { Prop } from "@nestjs/mongoose";
 
 
 @ObjectType()
@@ -29,6 +30,9 @@ export class Booking {
 
     @Field(() => OrderStatus, { nullable: true })
     bookingStatus?: OrderStatus;
+
+    @Field(() => GraphQLISODateTime)
+    expireAt: Date;
 }
 
 @ObjectType()

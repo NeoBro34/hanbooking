@@ -42,6 +42,11 @@ const BookingSchema = new Schema(
       default: OrderStatus.PENDING,
       index: true,
     },
+
+    expireAt: {
+      type: Date,
+      required: true,
+    },
   },
   { timestamps: true, collection: 'bookings' },
 );
@@ -51,5 +56,6 @@ BookingSchema.index({
   checkInDate: 1,
   checkOutDate: 1,
 });
+BookingSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
 
 export default BookingSchema;

@@ -48,6 +48,9 @@ export class BookingService {
                 guests,
             );
 
+            const expireDate = new Date();
+                expireDate.setMinutes(expireDate.getMinutes() + 15);
+
             const booking = await this.bookingModel.create({
                 memberId: member,
                 propertyId: property,
@@ -56,6 +59,7 @@ export class BookingService {
                 checkOutDate,
                 totalPrice,
                 bookingStatus: OrderStatus.PENDING,
+                expireAt: expireDate,
             });
             return booking;
        } catch (err) {
@@ -132,7 +136,7 @@ export class BookingService {
         await booking.save({ session });
         await session.commitTransaction();
         return booking;
-        
+
         } catch (err) {
             await session.abortTransaction();
             console.log('Error, Booking.model:', err.message);
