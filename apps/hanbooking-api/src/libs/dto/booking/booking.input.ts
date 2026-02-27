@@ -40,7 +40,7 @@ export class BookingRange {
 }
 
 @InputType()
-class PISearch {
+class BokISearch {
   @IsOptional()
   @Field(() => String, { nullable: true })
   memberId?: mongoose.ObjectId;
@@ -92,12 +92,16 @@ export class BookingsInquiry {
   direction?: Direction;
 
   @IsNotEmpty()
-  @Field(() => PISearch)
-  search: PISearch;
+  @Field(() => BokISearch)
+  search: BokISearch;
 }
 
 @InputType()
-class APISearch {
+class ABokISearch {
+  @IsNotEmpty()
+  @Field(() => String)
+  propertyId: mongoose.ObjectId;
+
   @IsOptional()
   @Field(() => OrderStatus, { nullable: true })
   bookingStatus?: OrderStatus;
@@ -125,12 +129,12 @@ export class AgentBookingInquiry {
   direction?: Direction;
 
   @IsNotEmpty()
-  @Field(() => APISearch)
-  search: APISearch;
+  @Field(() => ABokISearch)
+  search: ABokISearch;
 }
 
 @InputType()
-class ALPISearch {
+class ALBokISearch {
   @IsOptional()
   @Field(() => OrderStatus, { nullable: true })
   bookingStatus?: OrderStatus;
@@ -162,19 +166,6 @@ export class AllBookingsInquiry {
   direction?: Direction;
 
   @IsNotEmpty()
-  @Field(() => ALPISearch)
-  search: ALPISearch;
-}
-
-@InputType()
-export class BookingsOrdinaryInquiry {
-  @IsNotEmpty()
-  @Min(1)
-  @Field(() => Int)
-  page: number;
-
-  @IsNotEmpty()
-  @Min(1)
-  @Field(() => Int)
-  limit: number;
+  @Field(() => ALBokISearch)
+  search: ALBokISearch;
 }

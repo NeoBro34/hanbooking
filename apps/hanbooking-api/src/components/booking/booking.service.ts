@@ -1,12 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
-import { Booking } from '../../libs/dto/booking/booking';
+import { Booking, Bookings } from '../../libs/dto/booking/booking';
 import { MemberService } from '../member/member.service';
-import { PropertyService } from '../property/property.service';
-import { CreateBookingInput } from '../../libs/dto/booking/booking.input';
-import { Message } from '../../libs/enums/common.enum';
-import { shapeIntoMongoObjectId } from '../../libs/config';
+import { AgentBookingInquiry, AllBookingsInquiry, CreateBookingInput } from '../../libs/dto/booking/booking.input';
+import { Direction, Message } from '../../libs/enums/common.enum';
+import { lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
 import { OrderStatus } from '../../libs/enums/booking.enum';
 import { Property } from '../../libs/dto/property/property';
 import { Connection } from 'mongoose';
@@ -48,9 +47,6 @@ export class BookingService {
                 guests,
             );
 
-            const expireDate = new Date();
-                expireDate.setMinutes(expireDate.getMinutes() + 15);
-
             const booking = await this.bookingModel.create({
                 memberId: member,
                 propertyId: property,
@@ -59,7 +55,6 @@ export class BookingService {
                 checkOutDate,
                 totalPrice,
                 bookingStatus: OrderStatus.PENDING,
-                expireAt: expireDate,
             });
             return booking;
        } catch (err) {
@@ -144,6 +139,78 @@ export class BookingService {
         } finally {
             session.endSession();
         }
+    }
+
+    /** getMyBookings **/
+    public async getMyBookings( memberId: ObjectId, input: AllBookingsInquiry ): Promise<Bookings> {
+
+        const match: T = {
+            memberId: memberId,
+        };
+        const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
+
+        const result = await this.bookingModel.aggregate(
+            [
+                { $match: match },
+                { $sort: sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: (input.page - 1 ) * input.limit },
+                            { $limit: input.limit },
+                            lookupMember,
+                            { $unwind: '$memberData' },
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ])
+            .exec();
+        if(!result[0].list.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
+    }
+
+    /** getAgentBookings **/
+    public async getAgentBookings( memberId: ObjectId, input: AgentBookingInquiry ): Promise<Bookings> {
+
+        const { propertyId } =input.search;
+
+        const propertyObjectId = shapeIntoMongoObjectId(propertyId);
+
+        const property = await this.propertyModel.findOne({
+            _id: propertyObjectId,
+            memberId,
+        })
+        .lean();
+        if (!property) throw new ForbiddenException('Not allowed');
+
+        const match: T = {
+            propertyId: propertyObjectId,
+            bookingStatus: OrderStatus.CONFIRMED,
+        };
+        const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
+
+        const result = await this.bookingModel.aggregate(
+            [
+                { $match: match },
+                { $sort: sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: (input.page - 1 ) * input.limit },
+                            { $limit: input.limit },
+                            lookupMember,
+                            { $unwind: '$memberData' },
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ])
+            .exec();
+        if(!result[0].list.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
     }
 
 
