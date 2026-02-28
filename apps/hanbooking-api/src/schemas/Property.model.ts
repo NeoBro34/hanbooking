@@ -76,6 +76,11 @@ const PropertySchema = new Schema(
       default: 0,
     },
 
+    propertyPoints: {
+      type: Number,
+      default: 0,
+    },
+
     propertyImages: {
       type: [String],
       required: true,

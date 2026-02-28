@@ -11,6 +11,7 @@ import { Property } from '../../libs/dto/property/property';
 import { Connection } from 'mongoose';
 import { T } from '../../libs/types/common';
 import { BookingUpdate } from '../../libs/dto/booking/booking.update';
+import { PropertyService } from '../property/property.service';
 
 @Injectable()
 export class BookingService {
@@ -18,6 +19,7 @@ export class BookingService {
         @InjectModel('Booking') private readonly bookingModel: Model<Booking>,
         @InjectModel('Property') private readonly propertyModel: Model<Property>,
         @InjectConnection() private readonly connection: Connection,
+        private readonly propertyService: PropertyService,
         private memberService: MemberService,
     ) {}
 
@@ -164,6 +166,18 @@ export class BookingService {
             'Booking cannot be completed',
             );
         }
+
+        await this.propertyService.propertyStatsEditor({
+            _id: booking.propertyId,
+            targetKey: 'propertyPoints',
+            modifier: 1,
+        });
+
+        await this.memberService.memberStatsEditor({
+            _id: booking.memberId,
+            targetKey: 'memberPoints',
+            modifier: 1,
+        });
 
         return booking;
     }

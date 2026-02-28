@@ -49,6 +49,9 @@ export class Property {
     @Field(() => Int)
     propertyRank: number;
 
+    @Field(() => Int)
+    propertyPoints: number;
+
     @Field(() => [String])
     propertyImages: string[];
 
