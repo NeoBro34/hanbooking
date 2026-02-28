@@ -10,6 +10,7 @@ import { OrderStatus } from '../../libs/enums/booking.enum';
 import { Property } from '../../libs/dto/property/property';
 import { Connection } from 'mongoose';
 import { T } from '../../libs/types/common';
+import { BookingUpdate } from '../../libs/dto/booking/booking.update';
 
 @Injectable()
 export class BookingService {
@@ -22,31 +23,31 @@ export class BookingService {
 
     /** createBooking **/
     public async createBooking(memberId: ObjectId, input: CreateBookingInput): Promise<Booking> {
-       try {
-            const { propertyId, guests, checkInDate, checkOutDate } = input;
-            const member = shapeIntoMongoObjectId(memberId);
-            const property = shapeIntoMongoObjectId(propertyId);
+        const { propertyId, guests, checkInDate, checkOutDate } = input;
+        const member = shapeIntoMongoObjectId(memberId);
+        const property = shapeIntoMongoObjectId(propertyId);
 
-            if (new Date(checkInDate) >= new Date(checkOutDate)) {
-                throw new BadRequestException(Message.SOMETHING_WENT_WRONG);
-            }
+        if (new Date(checkInDate) >= new Date(checkOutDate)) {
+            throw new BadRequestException(Message.SOMETHING_WENT_WRONG);
+        }
 
-            const conflict = await this.bookingModel.findOne({
-                propertyId: property,
-                bookingStatus: OrderStatus.CONFIRMED,
-                checkInDate: { $lt: checkOutDate },
-                checkOutDate: { $gt: checkInDate },
-            }).exec();
+        const conflict = await this.bookingModel.findOne({
+            propertyId: property,
+            bookingStatus: OrderStatus.CONFIRMED,
+            checkInDate: { $lt: checkOutDate },
+            checkOutDate: { $gt: checkInDate },
+        }).exec();
 
-            if (conflict) throw new BadRequestException(Message.PROPERTY_AVAILABLE );
+        if (conflict) throw new BadRequestException(Message.PROPERTY_AVAILABLE );
 
-            const totalPrice = await this.calculatePrice(
-                propertyId,
-                checkInDate,
-                checkOutDate,
-                guests,
-            );
+        const totalPrice = await this.calculatePrice(
+            propertyId,
+            checkInDate,
+            checkOutDate,
+            guests,
+        );
 
+        try {
             const booking = await this.bookingModel.create({
                 memberId: member,
                 propertyId: property,
@@ -141,6 +142,32 @@ export class BookingService {
         }
     }
 
+    /** completeBooking **/
+    public async completeBooking( id: ObjectId ): Promise<Booking> {
+
+        const now = new Date();
+
+        const booking = await this.bookingModel.findOneAndUpdate(
+            {
+                _id: id,
+                bookingStatus: OrderStatus.CONFIRMED,
+                checkOutDate: { $lte: now },
+            },
+            {
+                bookingStatus: OrderStatus.COMPLETED,
+            },
+            { new: true },
+        );
+
+        if (!booking) {
+            throw new BadRequestException(
+            'Booking cannot be completed',
+            );
+        }
+
+        return booking;
+    }
+
     /** getMyBookings **/
     public async getMyBookings( memberId: ObjectId, input: AllBookingsInquiry ): Promise<Bookings> {
 
@@ -213,7 +240,38 @@ export class BookingService {
         return result[0];
     }
 
+     /** Admin **/
 
+    /** getAllPropertiesByAdmin **/
+    public async getAllBookingsByAdmin(input: AllBookingsInquiry): Promise<Bookings> {
+        const { bookingStatus, propertyLocationList } = input.search;
+        const match: T = {};
+        const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
+
+        if(bookingStatus) match.bookingStatus = bookingStatus;
+        if(propertyLocationList) match.propertyLocationList = { $in: propertyLocationList };
+
+        const result = await this.bookingModel.aggregate(
+            [
+                { $match: match },
+                { $sort: sort },
+                {
+                    $facet: {
+                        list: [
+                            { $skip: (input.page - 1) * input.limit },
+                            { $limit: input.limit },
+                            lookupMember,
+                            { $unwind: '$memberData' },
+                        ],
+                        metaCounter: [{ $count: 'total' }],
+                    },
+                },
+            ]
+        ).exec();
+        if(!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+
+        return result[0];
+    }
 
 
     private async calculatePrice( propertyId: ObjectId, checkIn: Date, checkOut: Date, guests: number ): Promise<number> {

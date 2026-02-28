@@ -10,6 +10,7 @@ import { shapeIntoMongoObjectId } from '../../libs/config';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { BookingUpdate } from '../../libs/dto/booking/booking.update';
 
 @Resolver()
 export class BookingResolver {
@@ -50,6 +51,18 @@ export class BookingResolver {
         return await this.bookingService.cancelBooking(memberId, id);
     }
 
+    /** completeBooking **/
+    @UseGuards(AuthGuard)
+    @Mutation(() => Booking)
+    public async completeBooking(
+        @Args('bookingId') bookingId: string,
+    ): Promise<Booking> {
+        console.log('Mutation: completeBookin');
+
+        const id = shapeIntoMongoObjectId(bookingId);
+        return await this.bookingService.completeBooking(id);
+    }
+
     /** getMyBookings **/
     @UseGuards(AuthGuard)
     @Query(() => Bookings)
@@ -72,5 +85,19 @@ export class BookingResolver {
     ): Promise<Bookings> {
         console.log('Query: getAgentBookings');
         return await this.bookingService.getAgentBookings(memberId, input);
+    }
+
+    /** Admin **/
+    
+    /** getAllBookingsByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Query(( returns ) => Bookings)
+    public async getAllBookingsByAdmin(
+        @Args('input') input: AllBookingsInquiry,
+        @AuthMember('_id') memberId: mongoose.ObjectId,
+    ): Promise<Bookings> {
+        console.log('Query: getAllPropertiesByAdmin');
+        return await this.bookingService.getAllBookingsByAdmin(input);
     }
 }
