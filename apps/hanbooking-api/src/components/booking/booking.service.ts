@@ -5,7 +5,7 @@ import { Booking, Bookings } from '../../libs/dto/booking/booking';
 import { MemberService } from '../member/member.service';
 import { AgentBookingInquiry, AllBookingsInquiry, CreateBookingInput } from '../../libs/dto/booking/booking.input';
 import { Direction, Message } from '../../libs/enums/common.enum';
-import { lookupMember, shapeIntoMongoObjectId } from '../../libs/config';
+import { lookupMember, lookupProperty, shapeIntoMongoObjectId } from '../../libs/config';
 import { OrderStatus } from '../../libs/enums/booking.enum';
 import { Property } from '../../libs/dto/property/property';
 import { Connection } from 'mongoose';
@@ -183,31 +183,36 @@ export class BookingService {
     }
 
     /** getMyBookings **/
-    public async getMyBookings( memberId: ObjectId, input: AllBookingsInquiry ): Promise<Bookings> {
+    public async getMyBookings(memberId: ObjectId, input: AllBookingsInquiry): Promise<Bookings> {
 
         const match: T = {
             memberId: memberId,
         };
+
+        /** booking status filter **/
+        if (input?.search?.bookingStatus) {
+            match.bookingStatus = input.search.bookingStatus;
+        }
+
         const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
 
-        const result = await this.bookingModel.aggregate(
-            [
-                { $match: match },
-                { $sort: sort },
-                {
-                    $facet: {
-                        list: [
-                            { $skip: (input.page - 1 ) * input.limit },
-                            { $limit: input.limit },
-                            lookupMember,
-                            { $unwind: '$memberData' },
-                        ],
-                        metaCounter: [{ $count: 'total' }],
-                    },
+        const result = await this.bookingModel.aggregate([
+            { $match: match },
+            { $sort: sort },
+            {
+                $facet: {
+                    list: [
+                        { $skip: (input.page - 1) * input.limit },
+                        { $limit: input.limit },
+                        lookupMember,
+                        lookupProperty,
+                        { $unwind: '$memberData' },
+                        { $unwind: '$propertyData' },
+                    ],
+                    metaCounter: [{ $count: 'total' }],
                 },
-            ])
-            .exec();
-        if(!result[0].list.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
+            },
+        ]).exec();
 
         return result[0];
     }

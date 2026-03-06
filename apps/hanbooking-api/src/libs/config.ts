@@ -22,7 +22,7 @@ export const availablePropertySorts = [
   'propertyLikes',
   'propertyViews',
   'propertyRank',
-  'propertyPrice',
+  'propertyPricePerNight',
 ];
 export const availableBoardArticleSorts = [
   'createdAt',
@@ -126,6 +126,15 @@ export const lookupMember = {
     localField: 'memberId',
     foreignField: '_id',
     as: 'memberData',
+  },
+};
+
+export const lookupProperty = {
+  $lookup: {
+    from: 'properties',
+    localField: 'propertyId',
+    foreignField: '_id',
+    as: 'propertyData',
   },
 };
 

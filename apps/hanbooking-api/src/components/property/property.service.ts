@@ -78,7 +78,6 @@ export class PropertyService {
         const search: T = {
             _id: input._id,
             memberId: memberId,
-            propertyStatus: PropertyStatus.ACTIVE,
         };
 
         if (propertyStatus === PropertyStatus.DELETE) deletedAt = moment().toDate();
@@ -147,7 +146,7 @@ export class PropertyService {
         if(roomsList && roomsList.length) match.propertyRooms = { $in: roomsList };
         if(bedsList && bedsList.length) match.propertyBeds = { $in: bedsList };
         if(typeList && typeList.length) match.propertyType = { $in: typeList };
-        if(pricesRange) match.propertyPrice = { $gte: pricesRange.start, $lte: pricesRange.end };
+        if(pricesRange) match.propertyPricePerNight = { $gte: pricesRange.start, $lte: pricesRange.end };
         if(periodsRange) match.createdAt = { $gte: periodsRange.start, $lte: periodsRange.end };
         if(text) match.propertyTitle = { $regex: new RegExp(text, 'i') };
         if(amenities) {
