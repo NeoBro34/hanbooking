@@ -10,31 +10,8 @@ export class BookingUpdate {
     _id: mongoose.ObjectId;
 
     @IsOptional()
-    @Field(() => String)
-    memberId?: mongoose.ObjectId;
-
-    @IsOptional()
-    @Field(() => String)
-    propertyId?: mongoose.ObjectId;
-
-    @IsOptional()
-    @Field(() => Number)
-    @Min(1)
-    guests?: number;
-
-    @IsOptional()
-    @Field(() => GraphQLISODateTime)
-    checkInDate?: Date;
-
-    @IsOptional()
-    @Field(() => GraphQLISODateTime)
-    checkOutDate?: Date;
-
-    @IsOptional()
-    @Field(() => Number)
-    totalPrice?: number;
-
-    @IsOptional()
     @Field(() => OrderStatus, { nullable: true })
     bookingStatus?: OrderStatus;
+
+    canceledAt?: Date;
 }

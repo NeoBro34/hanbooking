@@ -12,6 +12,7 @@ import { Connection } from 'mongoose';
 import { T } from '../../libs/types/common';
 import { BookingUpdate } from '../../libs/dto/booking/booking.update';
 import { PropertyService } from '../property/property.service';
+import moment from 'moment';
 
 @Injectable()
 export class BookingService {
@@ -280,7 +281,9 @@ export class BookingService {
                             { $skip: (input.page - 1) * input.limit },
                             { $limit: input.limit },
                             lookupMember,
+                            lookupProperty,
                             { $unwind: '$memberData' },
+                            { $unwind: '$propertyData' },
                         ],
                         metaCounter: [{ $count: 'total' }],
                     },
@@ -290,6 +293,29 @@ export class BookingService {
         if(!result.length) throw new InternalServerErrorException(Message.NO_DATA_FOUND);
 
         return result[0];
+    }
+
+    /** uupdateBookingsByAdmin **/
+    public async updateBookingsByAdmin(input: BookingUpdate): Promise<Booking> {
+        let { bookingStatus, canceledAt } = input;
+        const search: T = {
+            _id: input._id,
+        };
+
+        if (bookingStatus === OrderStatus.CANCELLED) canceledAt = moment().toDate();
+
+        const result = await this.bookingModel.findOneAndUpdate(search, input, { new: true }).exec();
+
+        return result;
+    }
+
+    /** removeBookingsByAdmin **/
+    public async removeBookingsByAdmin(bookingId: ObjectId): Promise<Booking> {
+        const search: T = { _id: bookingId, bookingStatus: OrderStatus.CANCELLED};
+        const result = await this.bookingModel.findOneAndDelete(search).exec();
+        if (!result) throw new InternalServerErrorException(Message.REMOVE_FAILED);
+
+        return result;
     }
 
 

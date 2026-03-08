@@ -256,7 +256,6 @@ export class PropertyService {
         let { propertyStatus, deletedAt } = input;
         const search: T = {
             _id: input._id,
-            propertyStatus: PropertyStatus.ACTIVE,
         };
 
         if (propertyStatus === PropertyStatus.DELETE) deletedAt = moment().toDate();

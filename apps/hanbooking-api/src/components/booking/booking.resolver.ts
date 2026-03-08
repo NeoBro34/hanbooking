@@ -97,7 +97,27 @@ export class BookingResolver {
         @Args('input') input: AllBookingsInquiry,
         @AuthMember('_id') memberId: mongoose.ObjectId,
     ): Promise<Bookings> {
-        console.log('Query: getAllPropertiesByAdmin');
+        console.log('Query: getAllBookingsByAdmin');
         return await this.bookingService.getAllBookingsByAdmin(input);
+    }
+
+    /** updateBookingsByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Mutation((returns) => Booking)
+    public async updateBookingsByAdmin(@Args('input') input: BookingUpdate): Promise<Booking> {
+        console.log('Mutation: updateBookingsByAdmin');
+        input._id = shapeIntoMongoObjectId(input._id);
+        return await this.bookingService.updateBookingsByAdmin(input);
+    }
+
+    /** removeBookingsByAdmin **/
+    @Roles(MemberType.ADMIN)
+    @UseGuards(RolesGuard)
+    @Mutation((returns) => Booking)
+    public async removeBookingsByAdmin(@Args('bookingId') input: string): Promise<Booking> {
+        console.log('Mutation: removeBookingsByAdmin');
+        const bookingId = shapeIntoMongoObjectId(input);
+        return await this.bookingService.removeBookingsByAdmin(bookingId);
     }
 }
