@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MemberModule } from '../member/member.module';
 import { PropertyModule } from '../property/property.module';
 import PropertySchema from '../../schemas/Property.model';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
     imports: [
@@ -25,6 +26,7 @@ import PropertySchema from '../../schemas/Property.model';
         AuthModule,
         MemberModule,
         PropertyModule,
+        NotificationModule,
       ],
     providers: [BookingResolver, BookingService]
 })

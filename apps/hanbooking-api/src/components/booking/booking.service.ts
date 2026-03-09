@@ -13,6 +13,8 @@ import { T } from '../../libs/types/common';
 import { BookingUpdate } from '../../libs/dto/booking/booking.update';
 import { PropertyService } from '../property/property.service';
 import moment from 'moment';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationGroup, NotificationType } from '../../libs/enums/notification.enum';
 
 @Injectable()
 export class BookingService {
@@ -22,6 +24,7 @@ export class BookingService {
         @InjectConnection() private readonly connection: Connection,
         private readonly propertyService: PropertyService,
         private memberService: MemberService,
+        private readonly notificationService: NotificationService,
     ) {}
 
     /** createBooking **/
@@ -60,6 +63,22 @@ export class BookingService {
                 totalPrice,
                 bookingStatus: OrderStatus.PENDING,
             });
+
+            const targetProperty = await this.propertyModel.findById(property).lean().exec();
+            if (targetProperty?.memberId) {
+                try {
+                    await this.notificationService.createNotification(member, {
+                        notificationType: NotificationType.BOOKING,
+                        notificationGroup: NotificationGroup.PROPERTY,
+                        notificationTitle: 'New booking request',
+                        notificationDesc: 'A new booking request is waiting for confirmation.',
+                        receiverId: targetProperty.memberId,
+                        propertyId: property,
+                    });
+                } catch (error) {
+                    console.log('Booking notification failed:', error?.message);
+                }
+            }
             return booking;
        } catch (err) {
             console.log('Error, Booking.model:', err.message);
@@ -93,6 +112,22 @@ export class BookingService {
 
         booking.bookingStatus = OrderStatus.CONFIRMED;
         await booking.save({ session });
+
+        const targetProperty = await this.propertyModel.findById(booking.propertyId).session(session);
+        if (targetProperty?.memberId) {
+            try {
+                await this.notificationService.createNotification(targetProperty.memberId, {
+                    notificationType: NotificationType.BOOKING,
+                    notificationGroup: NotificationGroup.PROPERTY,
+                    notificationTitle: 'Booking confirmed',
+                    notificationDesc: 'Your booking has been confirmed.',
+                    receiverId: booking.memberId,
+                    propertyId: booking.propertyId,
+                });
+            } catch (error) {
+                console.log('Booking notification failed:', error?.message);
+            }
+        }
 
         await session.commitTransaction();
         return booking;
@@ -133,6 +168,23 @@ export class BookingService {
         booking.bookingStatus = OrderStatus.CANCELLED;
 
         await booking.save({ session });
+
+        const targetProperty = await this.propertyModel.findById(booking.propertyId).session(session);
+        if (targetProperty?.memberId) {
+            try {
+                await this.notificationService.createNotification(memberId, {
+                    notificationType: NotificationType.BOOKING,
+                    notificationGroup: NotificationGroup.PROPERTY,
+                    notificationTitle: 'Booking cancelled',
+                    notificationDesc: 'Guest cancelled the booking.',
+                    receiverId: targetProperty.memberId,
+                    propertyId: booking.propertyId,
+                });
+            } catch (error) {
+                console.log('Booking notification failed:', error?.message);
+            }
+        }
+
         await session.commitTransaction();
         return booking;
 

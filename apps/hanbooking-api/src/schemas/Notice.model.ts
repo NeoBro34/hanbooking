@@ -30,6 +30,19 @@ const NoticeSchema = new Schema(
       required: true,
       ref: 'Member',
     },
+
+    inquiryAnswer: {
+      type: String,
+    },
+
+    answeredAt: {
+      type: Date,
+    },
+
+    answeredBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'Member',
+    },
   },
   { timestamps: true, collection: 'notices' },
 );

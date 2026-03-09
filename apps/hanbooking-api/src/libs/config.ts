@@ -31,6 +31,8 @@ export const availableBoardArticleSorts = [
   'articleViews',
 ];
 export const availableCommentSorts = ['createdAt', 'updatedAt'];
+export const availableNoticeSorts = ['createdAt', 'updatedAt'];
+export const availableNotificationSorts = ['createdAt', 'updatedAt'];
 
 /** IMAGE CONFIGURATION **/
 export const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
