@@ -1,6 +1,3 @@
-version: "3.3"
-
-
 services:
   hanbooking-api:
     container_name: hanbooking-api
