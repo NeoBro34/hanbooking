@@ -1,0 +1,39 @@
+version: "3.3"
+
+
+services:
+  hanbooking-api:
+    container_name: hanbooking-api
+    restart: always 
+    image: node:20.19.5
+    ports:
+      - 4001:3007
+    volumes:
+      - ./:/usr/src/hanbooking
+    working_dir: /usr/src/hanbooking
+    networks:
+      - monorepo-network
+
+      # FOR PRODUCTION
+    command: bash -c "npm install && npm run build && npm run start:prod"
+
+
+  hanbooking-batch:
+    container_name: hanbooking-batch
+    restart: unless-stopped
+    image: node:20.19.5
+    ports:
+      - 4002:3008
+    volumes:
+      - ./:/usr/src/hanbooking
+    working_dir: /usr/src/hanbooking
+
+    networks:
+      - monorepo-network
+
+      # FOR PRODUCTION
+    command: bash -c "npm install && npm run build hanbooking-batch && npm run start:prod:batch"
+
+networks:
+  monorepo-network:
+    driver: bridge
